@@ -125,6 +125,7 @@ impl Client {
 
         let mut url = [scheme, "://", addr, "/rest/"].concat();
         url.push_str(query);
+        url.push_str(".view");
         url.push_str("?");
         url.push_str(&self.auth.to_url(self.ver));
         url.push_str("&");
