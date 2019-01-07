@@ -40,12 +40,12 @@ pub trait Annotatable {
 
 impl Annotatable for Artist {
     fn star(&self, client: &Client) -> Result<()> {
-        client.get("star", Query::with("artistId", self.id))?;
+        client.get("star", Query::with("artistId", self.id.as_str()))?;
         Ok(())
     }
 
     fn unstar(&self, client: &Client) -> Result<()> {
-        client.get("unstar", Query::with("artistId", self.id))?;
+        client.get("unstar", Query::with("artistId", self.id.as_str()))?;
         Ok(())
     }
 
@@ -54,7 +54,7 @@ impl Annotatable for Artist {
             return Err(Error::Other("rating must be between 0 and 5 inclusive"))
         }
 
-        let args = Query::with("id", self.id).arg("rating", rating).build();
+        let args = Query::with("id", self.id.as_str()).arg("rating", rating).build();
         client.get("setRating", args)?;
         Ok(())
     }
@@ -69,7 +69,7 @@ impl Annotatable for Artist {
         B: Into<Option<bool>>,
         T: Into<Option<&'a str>>,
     {
-        let args = Query::with("id", self.id)
+        let args = Query::with("id", self.id.as_str())
             .arg("time", time.into())
             .arg("submission", now_playing.into().map(|b| !b))
             .build();
