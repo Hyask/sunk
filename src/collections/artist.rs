@@ -3,8 +3,9 @@ use std::{fmt, result};
 use serde::de::{Deserialize, Deserializer};
 use serde_json;
 
-use {Album, Client, Error, Media, Result, Song};
 use query::Query;
+use search::SearchPage;
+use {Album, Client, Error, Media, Result, Song};
 
 /// Basic information about an artist.
 #[derive(Debug, Clone)]
@@ -31,9 +32,26 @@ pub struct ArtistInfo {
     similar_artists: Vec<Artist>,
 }
 
+/// Artist list index, from getArtists view
+#[derive(Debug, Clone)]
+pub struct ArtistIndex {
+    /// Index name
+    pub name: String,
+    /// Artist list
+    artist: Vec<Artist>,
+}
+
 impl Artist {
     pub fn get(client: &Client, id: &String) -> Result<Artist> {
         self::get_artist(client, &id)
+    }
+    ///
+    /// Lists all artists on the server. Supports paging.
+    pub fn list(
+        client: &Client,
+        page: SearchPage,
+    ) -> Result<Vec<Artist>> {
+        self::get_artists(client, page.count, page.offset)
     }
 
     /// Returns a list of albums released by the artist.
@@ -89,6 +107,29 @@ impl Artist {
     }
 }
 
+fn get_artists<U>(
+    client: &Client,
+    size: U,
+    offset: U,
+) -> Result<Vec<Artist>>
+where
+    U: Into<Option<usize>>,
+{
+    let args = Query::new()
+        .arg("size", size.into())
+        .arg("offset", offset.into())
+        .build();
+
+    let mut artist = client.get("getArtists", args)?;
+    let mut indexes: Vec<ArtistIndex> = serde_json::from_value(artist["index"].take()).unwrap();
+    let mut artists: Vec<Artist> = vec![];
+    for index in &mut indexes {
+        artists.append(&mut index.artist);
+    }
+    Ok(artists)
+}
+
+
 impl<'de> Deserialize<'de> for Artist {
     fn deserialize<D>(de: D) -> ::std::result::Result<Self, D::Error>
     where
@@ -113,6 +154,27 @@ impl<'de> Deserialize<'de> for Artist {
             cover_id: raw.cover_art,
             album_count: raw.album_count,
             albums: raw.album,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ArtistIndex {
+    fn deserialize<D>(de: D) -> ::std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct _ArtistIndex {
+            name: String,
+            artist: Vec<Artist>,
+        }
+
+        let raw = _ArtistIndex::deserialize(de)?;
+
+        Ok(ArtistIndex {
+            name: raw.name,
+            artist: raw.artist,
         })
     }
 }
